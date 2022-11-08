@@ -36,17 +36,20 @@ bs4_parser_pep
 
 ## Документация парсера
 ```
+usage: main.py [-h] [-c] [-o {pretty,file}] {whats-new,latest-versions,download,pep}
+
 Парсер документации Python
 
 positional arguments:
   {whats-new,latest-versions,download,pep}
                         Режимы работы парсера
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -c, --clear-cache     Очистка кеша
   -o {pretty,file}, --output {pretty,file}
                         Дополнительные способы вывода данных
+
 ```
 
 ## Описание проекта
