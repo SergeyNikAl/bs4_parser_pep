@@ -144,7 +144,7 @@ python3 -m venv venv
 
 3. Активировать виртуальное окружение и установить зависимости из ```requirements.txt```:
 ```bash
-source venv/bin/activate
+source venv/Scripts/activate
 ```
 
 ```bash
