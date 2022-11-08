@@ -46,4 +46,3 @@ def configure_logging():
         # Вывод логов в терминал.
         handlers=(rotating_handler, logging.StreamHandler())
     )
-

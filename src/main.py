@@ -144,23 +144,15 @@ MODE_TO_FUNCTION = {
 
 
 def main():
-    # Запускаем функцию с конфигурацией логов.
     configure_logging()
-    # Отмечаем в логах момент запуска программы.
     logging.info('Парсер запущен!')
-    # Конфигурация парсера аргументов командной строки —
-    # передача в функцию допустимых вариантов выбора.
     arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
-    # Считывание аргументов из командной строки.
     args = arg_parser.parse_args()
-    # Логируем переданные аргументы командной строки.
     logging.info(f'Аргументы командной строки: {args}')
     session = requests_cache.CachedSession()
     if args.clear_cache:
         session.cache.clear()
-    # Получение из аргументов командной строки нужного режима работы.
     parser_mode = args.mode
-    # Поиск и вызов нужной функции по ключу словаря.
     results = MODE_TO_FUNCTION[parser_mode](session)
     if results:
         control_output(results, args)
