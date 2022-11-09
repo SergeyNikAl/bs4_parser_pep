@@ -1,6 +1,8 @@
 import logging
 from requests import RequestException
 
+from bs4 import BeautifulSoup
+
 from constants import PAGE_LOADING_ERROR_MESSAGE, MISSING_TAG_MESSAGE
 from exceptions import ParserFindTagException
 
@@ -15,6 +17,10 @@ def get_response(session, url):
             PAGE_LOADING_ERROR_MESSAGE.format(url=url),
             stack_info=True
         ))
+
+
+def get_soup(session, *args):
+    return BeautifulSoup(get_response(session, *args).text, features='lxml')
 
 
 def find_tag(soup, tag, attrs=None):

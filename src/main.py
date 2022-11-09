@@ -4,32 +4,31 @@ from collections import defaultdict
 from urllib.parse import urljoin
 
 import requests_cache
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+from configs import configure_argument_parser, configure_logging
 from constants import (
     BASE_DIR,
+    CONNECTION_ERROR_MESSAGE,
     DOWNLOAD_DIR,
-    EXECUTION_ERROR,
     FILE_SAVE_MESSAGE,
+    FINISH_PARSING_MESSAGE,
     EXPECTED_STATUS,
     HEADERS_FOR_PYTHON_DOCS_TABLE,
     HEADERS_FOR_PYTHON_VERSION_TABLE,
     HEADERS_PEP_TABLE,
     MAIN_DOC_URL,
     MAIN_PEP_URL,
+    NOT_FOUND_TAG_MESSAGE,
+    PARSING_WITH_ARGUMENTS_MESSAGE,
+    PROGRAM_ERROR_MESSAGE,
+    PYTHON_VERSION_ERROR_MESSAGE,
+    START_PARSING_MESSAGE,
     UNEXPECTED_PEP_STATUS_MESSAGE,
 )
-from configs import configure_argument_parser, configure_logging
+from exceptions import ParserFindTagException
 from outputs import control_output
-from utils import find_tag, get_response
-
-
-def get_soup(session, *args):
-    response = get_response(session, *args)
-    if not response:
-        return
-    return BeautifulSoup(response.text, features='lxml')
+from utils import find_tag, get_soup
 
 
 def whats_new(session):
@@ -40,14 +39,17 @@ def whats_new(session):
     results = [HEADERS_FOR_PYTHON_DOCS_TABLE, ]
     for section in tqdm(sections):
         version_link = urljoin(whats_new_url, section.find('a')['href'])
-        soup = get_soup(session, version_link)
-        results.append(
-            (
-                version_link,
-                find_tag(soup, 'h1').text,
-                find_tag(soup, 'dl').text.replace('\n', ' ')
+        try:
+            soup = get_soup(session, version_link)
+            results.append(
+                (
+                    version_link,
+                    find_tag(soup, 'h1').text,
+                    find_tag(soup, 'dl').text.replace('\n', ' ')
+                )
             )
-        )
+        except ConnectionError:
+            continue
     return results
 
 
@@ -58,7 +60,7 @@ def latest_versions(session):
             a_tags = ul.find_all('a')
             break
     else:
-        raise RuntimeError('Ничего не найдено')
+        raise RuntimeError(PYTHON_VERSION_ERROR_MESSAGE)
     results = [HEADERS_FOR_PYTHON_VERSION_TABLE, ]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
@@ -87,36 +89,39 @@ def download(session):
 
 
 def pep(session):
-    tr_peps = get_soup(
+    logs = []
+    statuses_count = defaultdict(int)
+    for pep in tqdm(get_soup(
         session, MAIN_PEP_URL
     ).select(
         '#numerical-index tbody tr'
-    )
-    logs = []
-    statuses_count = defaultdict(int)
-    for pep in tqdm(tr_peps):
-        td_pep = find_tag(pep, 'td')
+    )):
         pep_link = urljoin(MAIN_PEP_URL, pep.find('a')['href'])
-        status = td_pep.text[1:]
-        soup = get_soup(session, pep_link)
-        status_tag = find_tag(soup, 'dl')
-        status_page = status_tag.find(
-            string='Status'
-        ).parent.find_next_sibling().text
-        if status_page not in EXPECTED_STATUS[status]:
-            logs.append(
-                UNEXPECTED_PEP_STATUS_MESSAGE.format(
-                    pep_link=pep_link,
-                    status=status_page,
-                    expected_status=EXPECTED_STATUS[status],
+        try:
+            status = find_tag(pep, 'td').text[1:]
+            status_page = find_tag(
+                get_soup(session, pep_link), 'dl'
+            ).find(
+                string='Status'
+            ).parent.find_next_sibling().text
+            if status_page not in EXPECTED_STATUS[status]:
+                logs.append(
+                    UNEXPECTED_PEP_STATUS_MESSAGE.format(
+                        pep_link=pep_link,
+                        status=status_page,
+                        expected_status=EXPECTED_STATUS[status],
+                    )
                 )
-            )
-        statuses_count[status_page] += 1
+            statuses_count[status_page] += 1
+        except ConnectionError:
+            logs.append(CONNECTION_ERROR_MESSAGE.format(link=pep_link))
+        except ParserFindTagException:
+            logs.append(NOT_FOUND_TAG_MESSAGE)
     for log in logs:
         logging.info(log)
     return [
         HEADERS_PEP_TABLE,
-        *[(status, amount) for status, amount in statuses_count.items()],
+        *statuses_count.items(),
         ('Total', sum(statuses_count.values()))
     ]
 
@@ -131,9 +136,9 @@ MODE_TO_FUNCTION = {
 
 def main():
     configure_logging()
-    logging.info('Парсер запущен!')
+    logging.info(START_PARSING_MESSAGE)
     args = configure_argument_parser(MODE_TO_FUNCTION.keys()).parse_args()
-    logging.info(f'Аргументы командной строки: {args}')
+    logging.info(PARSING_WITH_ARGUMENTS_MESSAGE.format(args=args))
     try:
         session = requests_cache.CachedSession()
         if args.clear_cache:
@@ -142,9 +147,12 @@ def main():
         results = MODE_TO_FUNCTION[parser_mode](session)
         if results:
             control_output(results, args)
-    except Exception:
-        logging.exception(msg=EXECUTION_ERROR, stack_info=True)
-    logging.info('Парсер завершил работу.')
+    except Exception as error:
+        logging.exception(
+            msg=PROGRAM_ERROR_MESSAGE.format(error=error),
+            stack_info=True
+        )
+    logging.info(FINISH_PARSING_MESSAGE)
 
 
 if __name__ == '__main__':
