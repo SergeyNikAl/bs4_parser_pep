@@ -33,11 +33,13 @@ from utils import find_tag, get_soup
 
 def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-    sections = get_soup(session, whats_new_url).select(
-        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1'
-    )
     results = [HEADERS_FOR_PYTHON_DOCS_TABLE, ]
-    for section in tqdm(sections):
+    logs = []
+    for section in tqdm(get_soup(
+            session, whats_new_url
+    ).select(
+        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1'
+    )):
         version_link = urljoin(whats_new_url, section.find('a')['href'])
         try:
             soup = get_soup(session, version_link)
@@ -49,7 +51,10 @@ def whats_new(session):
                 )
             )
         except ConnectionError:
+            logs.append(CONNECTION_ERROR_MESSAGE.format(link=version_link))
             continue
+    for log in logs:
+        logging.info(log)
     return results
 
 
