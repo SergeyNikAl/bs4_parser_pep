@@ -17,8 +17,6 @@ LOG_FORMAT = '"%(asctime)s - [%(levelname)s] - %(message)s"'
 DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 DT_FORMAT = '%d.%m.%Y %H:%M:%S'
 
-
-
 CONNECTION_ERROR_MESSAGE = 'Не удалось установить соединение по ссылке {link}'
 FILE_SAVE_MESSAGE = 'Файл был загружен и сохранён: {path}'
 FINISH_PARSING_MESSAGE = 'Парсер завершил работу.'
