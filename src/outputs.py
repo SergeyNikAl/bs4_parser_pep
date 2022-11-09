@@ -4,25 +4,22 @@ import logging
 
 from prettytable import PrettyTable
 
-from constants import BASE_DIR, DATETIME_FORMAT, FILE_SAVE_MESSAGE
+from constants import (
+    BASE_DIR,
+    DATETIME_FORMAT,
+    FILE_MOD,
+    FILE_SAVE_MESSAGE,
+    PRETTY_MOD,
+    RESULTS_DIR
+)
 
 
-def control_output(results, cli_args):
-    output = cli_args.output
-    if output == 'pretty':
-        pretty_output(results)
-    elif output == 'file':
-        file_output(results, cli_args)
-    else:
-        default_output(results)
-
-
-def default_output(results):
+def default_output(results, *args):
     for row in results:
         print(*row)
 
 
-def pretty_output(results):
+def pretty_output(results, *args):
     table = PrettyTable()
     table.field_names = results[0]
     table.align = 'l'
@@ -31,14 +28,23 @@ def pretty_output(results):
 
 
 def file_output(results, cli_args):
-    results_dir = BASE_DIR / 'results'
+    results_dir = BASE_DIR / RESULTS_DIR
     results_dir.mkdir(exist_ok=True)
     parser_mode = cli_args.mode
-    now = dt.datetime.now()
-    now_formatted = now.strftime(DATETIME_FORMAT)
-    file_name = f'{parser_mode}_{now_formatted}.csv'
-    file_path = results_dir / file_name
+    now_formatted = dt.datetime.now().strftime(DATETIME_FORMAT)
+    file_path = results_dir / f'{parser_mode}_{now_formatted}.csv'
     with open(file_path, 'w', encoding='utf-8') as file:
-        writer = csv.writer(file, dialect='unix')
+        writer = csv.writer(file, dialect=csv.unix_dialect)
         writer.writerows(results)
     logging.info(FILE_SAVE_MESSAGE.format(path=file_path))
+
+
+OUTPUT_FUNCTIONS = {
+    FILE_MOD: file_output,
+    PRETTY_MOD: pretty_output,
+    None: default_output,
+}
+
+
+def control_output(results, cli_args, outputs=OUTPUT_FUNCTIONS):
+    outputs[cli_args.output](results, cli_args)

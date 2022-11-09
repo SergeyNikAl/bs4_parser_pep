@@ -11,16 +11,16 @@ def get_response(session, url):
         response.encoding = 'utf-8'
         return response
     except RequestException:
-        logging.exception(
+        raise ConnectionError(logging.exception(
             PAGE_LOADING_ERROR_MESSAGE.format(url=url),
             stack_info=True
-        )
+        ))
 
 
 def find_tag(soup, tag, attrs=None):
-    searched_tag = soup.find(tag, attrs=(attrs or {}))
+    searched_tag = soup.find(tag, attrs=({} if attrs is None else attrs))
     if not searched_tag:
-        error_msg = MISSING_TAG_MESSAGE.format(tag=tag, attrs=attrs)
-        logging.error(error_msg, stack_info=True)
-        raise ParserFindTagException(error_msg)
+        raise ParserFindTagException(
+            MISSING_TAG_MESSAGE.format(tag=tag, attrs=attrs)
+        )
     return searched_tag
